@@ -1,0 +1,6 @@
+[package]
+name = "scaling_study"
+version = "0.1.0"
+authors = ["g1082321"]
+
+[dependencies]

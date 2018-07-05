@@ -1,0 +1,2 @@
+cd /home/g1082321/seissol/SeisSol/launch_SeisSol/
+OMP_NUM_THREADS=@threads mpiexec -np @ranks ./SeisSol_release_generatedKernels_dhsw_hybrid_none_9_3 parameters_tpv33.par
