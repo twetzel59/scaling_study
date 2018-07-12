@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -13,41 +14,75 @@ const PERMISSIONS: u32 = 0o744;
 const MULTIPLE: usize = 24;
 const FACTORS: [usize; 8] = [1, 2, 3, 4, 6, 8, 12, 24];
 
+const REPLACE_NODES: &str = "";
 const REPLACE_RANKS: &str = "@ranks";
 const REPLACE_THREADS: &str = "@threads";
 
+const DEFAULT_NODES: usize = 1;
 const DELAY_MS: u64 = 1000;
 
 #[derive(Debug)]
 struct Combo {
+    nodes: usize
     ranks: usize,
     threads: usize,
 }
 
 impl Combo {
-    fn new(ranks: usize, threads: usize) -> Combo {
+    fn new(nodes: usize, ranks: usize, threads: usize) -> Combo {
         Combo {
+            nodes,
             ranks,
             threads,
         }
     }
-        
+
     fn gen_combos() -> Vec<Combo> {
         let mut r = Vec::new();
         for i in &FACTORS {
-            r.push(Self::new(*i, MULTIPLE / *i))
+            r.push(Self::new(1, *i, MULTIPLE / *i))
+        }
+        r
+    }
+
+    fn gen_from_args() -> Vec<Combo> {
+        let mut r = Vec::new();
+        for (i, arg) in env::args().enumerate() {
+            if i != 0 {
+                r.push(Self::parse_arg(&arg))
+            }
         }
         r
     }
 
     fn stringify(&self) -> (String, String) {
-        (self.ranks.to_string(), self.threads.to_string())
+        (self.nodes.to_string(), self.ranks.to_string(), self.threads.to_string())
+    }
+
+    fn parse_arg(arg: &str) -> Combo {
+        let pieces: Vec<_> = arg.split(',').collect();
+        let mut nodes = 0;
+        let mut ranks = 0;
+        let mut threads = 0;
+
+        for (i, piece) in pieces.iter().enumerate() {
+            //println!("{} {}", i, piece);
+            match i {
+                0 => nodes = piece.parse().unwrap(),
+                1 => ranks = piece.parse().unwrap(),
+                2 => threads = piece.parse().unwrap(),
+                _ => panic!("Invalid number of pieces in arg"),
+            }
+        }
+
+        println!("{:?}", Combo::new(ranks, threads));
+        Combo::new(ranks, threads)
     }
 }
 
 #[derive(Debug)]
 struct Template {
-    content: String
+    content: String,
 }
 
 impl Template {
@@ -60,16 +95,16 @@ impl Template {
     }
 
     fn finish(&self, combo: &Combo) -> String {
-        let (ranks_str, threads_str) = combo.stringify();
-        //println!("{}, {}", ranks_str, threads_str);
+        let (nodes_str, ranks_str, threads_str) = combo.stringify();
+        //println!("{}, {}, {}", nodes_str, ranks_str, threads_str);
         let result = self.content.replace(REPLACE_RANKS, &ranks_str);
         result.replace(REPLACE_THREADS, &threads_str)
     }
 }
 
 fn save_script(combo: &Combo, content: &String) -> String {
-    let filename = format!("{}/run_{}ranks_{}threads.sh",
-            PARENT, combo.ranks, combo.threads);
+    let filename = format!("{}/run_{}nodes_{}ranks_{}threads.sh",
+            PARENT, combo.nodes, combo.ranks, combo.threads);
     
     //println!("{}", filename);
     
@@ -79,7 +114,6 @@ fn save_script(combo: &Combo, content: &String) -> String {
 
     file.set_permissions(perms).unwrap();
     file.write_all(content.as_bytes()).unwrap();
-
     filename
 }
 
@@ -101,11 +135,19 @@ fn delay() {
 fn main() {
     let template = Template::new(TEMPLATE);
 
-    let combos = Combo::gen_combos();
+    let combos = if env::args().len() == 1 {
+        // No args: do 1 node, all combos
+        Combo::gen_combos()
+    } else {
+        // Any args: do all specified combos in format nodes,ranks,threads
+        Combo::gen_from_args()
+    };
+
+    //let combos = Combo::gen_combos();
     //println!("{:?}\n", combos);
 
-    for i in &combos {
-        submit(&save_script(i, &template.finish(i)));
-        delay();
-    }
+    //for i in &combos {
+    //    submit(&save_script(i, &template.finish(i)));
+    //    delay();
+    //}
 }
