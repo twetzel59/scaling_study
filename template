@@ -1,2 +1,4 @@
-cd /home/g1082321/seissol/SeisSol/launch_SeisSol/
-OMP_NUM_THREADS=@threads mpiexec -np @ranks ./SeisSol_release_generatedKernels_dhsw_hybrid_none_9_3 parameters_tpv33.par
+#PBS -l nodes=@nodes:ppn=24 -q scc
+export I_MPI_JOB_RESPECT_PROCESS_PLACEMENT=off
+cd $HOME/seissol/SeisSol/launch_SeisSol/
+OMP_NUM_THREADS=@threads mpiexec -np RANKS_TIMES_NODES) -ppn @ranks ./SeisSol_release_generatedKernels_dhsw_hybrid_none_9_3 parameters_tpv33.par
