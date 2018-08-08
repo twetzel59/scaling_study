@@ -17,6 +17,7 @@ const FACTORS: [usize; 8] = [1, 2, 3, 4, 6, 8, 12, 24];
 const REPLACE_NODES: &str = "@nodes";
 const REPLACE_RANKS: &str = "@ranks";
 const REPLACE_THREADS: &str = "@threads";
+const REPLACE_RANKS_TIMES_NODES: &str = "@rtimesn";
 
 const DELAY_MS: u64 = 1000;
 
@@ -75,10 +76,11 @@ impl Combo {
         Combo::new(nodes, ranks, threads)
     }
 
-    fn stringify(&self) -> (String, String, String) {
+    fn stringify(&self) -> (String, String, String, String) {
         (self.nodes.to_string(),
          self.ranks.to_string(),
-         self.threads.to_string())
+         self.threads.to_string(),
+	 (self.ranks * self.nodes).to_string())
     }
 }
 
@@ -97,11 +99,12 @@ impl Template {
     }
 
     fn finish(&self, combo: &Combo) -> String {
-        let (nodes_str, ranks_str, threads_str) = combo.stringify();
+        let (nodes_str, ranks_str, threads_str, ranks_times_threads_str) = combo.stringify();
         //println!("{}, {}, {}", nodes_str, ranks_str, threads_str);
         let mut result = self.content.replace(REPLACE_NODES, &nodes_str);
         result = result.replace(REPLACE_RANKS, &ranks_str);
-        result.replace(REPLACE_THREADS, &threads_str)
+        result = result.replace(REPLACE_THREADS, &threads_str);
+	result.replace(REPLACE_RANKS_TIMES_NODES, &ranks_times_threads_str)
     }
 }
 
@@ -148,12 +151,12 @@ fn main() {
 
     println!("{:?}\n", combos);
 
-    //for i in &combos {
-    //    submit(&save_script(i, &template.finish(i)));
-    //    delay();
-    //}
-
     for i in &combos {
-        save_script(i, &template.finish(i));
+        submit(&save_script(i, &template.finish(i)));
+        delay();
     }
+
+    //for i in &combos {
+    //    save_script(i, &template.finish(i));
+    //}
 }
